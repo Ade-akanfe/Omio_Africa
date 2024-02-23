@@ -2,7 +2,7 @@ const user_model = require("../model/userModel");
 const { generateCode, compare } = require("../util/code");
 const { generateToken } = require("../util/token");
 const Validator = require("../util/validator");
-const { comparePassword } = require("../util/password");
+const { comparePassword, hashpassword } = require("../util/password");
 const { sendEmail, resendMail } = require("../util/email");
 
 module.exports = {
@@ -10,20 +10,23 @@ module.exports = {
     try {
       Validator(req);
       const { email, password, lastName, firstName } = req.body;
-      const user = new user_model({
-        email: email.trim(),
-        password: password.trim(),
-        lastName: lastName.trim(),
-        firstName: firstName.trim(),
-      });
-      const code = generateCode();
-      user.code = code;
+      let user = await user_model.findOne({ email, type: "normal" });
+      if (!user) {
+        return next({ message: "user not found, please try again later" });
+      }
+      const new_password = await hashpassword(password);
       const token = generateToken({
         email,
         id: user.id,
       });
-      await sendEmail(user.email, code);
-      await user.save();
+      user = await user_model.updateOne(
+        { email, type: "normal" },
+        {
+          password: new_password,
+          lastName,
+          firstName,
+        }
+      );
       res.cookie("session", token);
       res.status(201).json({ message: "user created", token });
     } catch (error) {
@@ -129,7 +132,10 @@ module.exports = {
   forgotPasswordCode: async (req, res, next) => {
     try {
       const { email } = req.body;
-      const user = await user_model.findOne({ email: email.trim(),type:"normal" });
+      const user = await user_model.findOne({
+        email: email.trim(),
+        type: "normal",
+      });
       if (!user) {
         return next({ message: "Account not found" });
       }
@@ -165,7 +171,10 @@ module.exports = {
     try {
       Validator(req);
       const { email, password, confirm_password } = req.body;
-      const user = await user_model.findOne({ email: email.trim(),type:"normal" });
+      const user = await user_model.findOne({
+        email: email.trim(),
+        type: "normal",
+      });
       if (!user) {
         return next({ message: "user not found try again later" });
       }
@@ -214,6 +223,7 @@ module.exports = {
       if (!req.user) {
         return next({ message: "Please try again" });
       }
+
       let { givenName: firstName, familyName: lastName } = req.user.name;
 
       let user = await user_model.findOne({
@@ -230,7 +240,13 @@ module.exports = {
           req.session.jwt = token;
         }
         res.cookie("session", token);
-        return res.status(200).json({ status: "success", token });
+        return res
+          .status(200)
+          .json({
+            status:
+              "success,please update your email address to verify your account",
+            token,
+          });
       }
       const email = new Date().getTime().toString();
       user = new user_model({
@@ -284,14 +300,15 @@ module.exports = {
       res.status(500).json({ message: error.message });
     }
   },
-  verifyresetCode: async (req, res) => {
+  verifyresetCode: async (req, res, next) => {
     try {
-      validator(req)
+      Validator(req);
       const { email, code } = req.body;
       const user = await user_model.findOne({ email, type: "normal" });
       if (!user) {
         return next({ message: "user not found" });
       }
+
       const match = await compare(user.code, code);
       if (!match) {
         return next({ message: "invalid code" });
@@ -301,6 +318,26 @@ module.exports = {
       if (error.field) {
         return next(error);
       }
+      res.status(500).json({ message: error.message });
+    }
+  },
+  useEmail: async (req, res, next) => {
+    try {
+      Validator(req);
+      const { email } = req.body;
+      let user = await user_model.findOne({ email });
+      if (user) {
+        return next({ message: "user with email exist" });
+      }
+      const code = generateCode();
+      user = new user_model({
+        email,
+        code,
+      });
+      await sendEmail(email, code);
+      await user.save();
+      res.status(200).json({ message: "code sent" });
+    } catch (error) {
       res.status(500).json({ message: error.message });
     }
   },

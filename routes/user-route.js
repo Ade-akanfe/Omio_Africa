@@ -14,6 +14,7 @@ const {
   successOauthrizeGoogle,
   updateAccount,
   verifyresetCode,
+  useEmail,
 } = require("../controller/user-controller");
 const user_route = express.Router();
 const { check } = require("express-validator");
@@ -23,35 +24,11 @@ const Authorization = require("../middleware/auth");
 user_route.post(
   "/new_user",
   [
-    check("firstName")
-      .notEmpty()
-      .withMessage("Please enter your first name")
-      .isLength({
-        min: 3,
-        max: 50,
-      })
-      .withMessage("Please enter a name within 3 to 50 characters"),
-    check("lastName")
-      .notEmpty()
-      .withMessage("Please enter your last name")
-      .isLength({
-        min: 3,
-        max: 50,
-      })
-      .withMessage("Please enter a name within 3 to 50 characters"),
     check("email")
       .notEmpty()
       .withMessage("Email field is required")
       .isEmail()
-      .withMessage("Please enter a valid email address")
-      .custom(async (val, _) => {
-        const user = await user_model.findOne({ email: val, type: "normal" });
-        if (user) {
-          throw new Error("Email is currently in use");
-        }
-        return false;
-      })
-      .withMessage("Email is currently in use"),
+      .withMessage("Please enter a valid email address"),
     check("password")
       .notEmpty()
       .withMessage("Password field is required")
@@ -59,6 +36,18 @@ user_route.post(
       .withMessage("Your password is not strong enough"),
   ],
   createAccount
+);
+
+user_route.post(
+  "/email",
+  [
+    check("email")
+      .notEmpty()
+      .withMessage("please enter email")
+      .isEmail()
+      .withMessage("please enter valid emaillocalhost"),
+  ],
+  useEmail
 );
 
 user_route.put(
@@ -124,7 +113,18 @@ user_route.put(
 
 user_route.get("/me", Authorization, getUser);
 
-user_route.put("/verify_reset_code", verifyresetCode);
+user_route.put(
+  "/verify_reset_code",
+  [
+    check("email")
+      .notEmpty()
+      .withMessage("enter valid email")
+      .isEmail()
+      .withMessage("Enter valid email"),
+    check("code").notEmpty().withMessage("Please enter a valid code"),
+  ],
+  verifyresetCode
+);
 
 user_route.post(
   "/password",

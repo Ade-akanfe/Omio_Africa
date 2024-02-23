@@ -1,6 +1,18 @@
 BASE_URL = "https://api-omio.onrender.com"
 
 //USER ROUTES
+
+
+{
+    descr:"send email code, for new user"
+    path:"user/email",
+    method:"POST",
+    payload:{
+        email
+    }
+}
+
+
 {
     desc:"create new user",
     path: "/user/new_user",
@@ -25,7 +37,8 @@ BASE_URL = "https://api-omio.onrender.com"
 
 {   
     dec:"verifiy your account",
-    path:"/user/verify"
+    path:"/user/verify",
+    requirement:User account already created
     payload: {
         code(6 digit)
     },
@@ -35,7 +48,7 @@ BASE_URL = "https://api-omio.onrender.com"
 {
     desc:"resend verification link",
     path:"/user/resend_link",
-    requirement:"User must be authenticated",
+    requirement:"User Account already created",
     method:"put"
 };
 

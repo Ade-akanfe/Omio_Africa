@@ -11,7 +11,6 @@ const user_schema = new Schema(
     password: {
       type: String,
       min: 8,
-      required: false,
     },
     firstName: {
       type: String,
